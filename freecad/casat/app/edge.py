@@ -1,4 +1,5 @@
-print("edge python module")
+from freecad.casat import *
+debug("edge python module")
 
 class Edge(object):
     "Edge class"

@@ -1,6 +1,6 @@
 #/**********************************************************************
 #*                                                                     *
-#* Copyright (c) XXXX FreeCAD AUthor <freecad_author@gmail.com>               *
+#* Copyright (c) Christophe Grellier <cg@grellier.fr>                  *
 #*                                                                     *
 #* This program is free software; you can redistribute it and/or modify*
 #* it under the terms of the GNU Lesser General Public License (LGPL)  *
@@ -20,36 +20,15 @@
 #*                                                                     *
 #***********************************************************************
 """
-GUI Initialization module
+Casat stands for Curve And Surface Additional Tools.
+It is a Freecad workbench mainly dedicated to the manipulation and creation
+of curves and surfaces, and more specifically NURBS.
 """
-
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-#
-#  First Things First
-#
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-#
-#  --- Copyrights ---
-#
-#  Here at the top of the module, it's good practice to always add
-#  the license text.  Add your name and email, if desired.
-#  Date is optional and reflects the date of first publication *only*.
-#
-#  --- Globals ----
-#
-#  Per standard Python practice, imports are located at the top of the
-#  file, with the exception of workbench commands - more later on that.
-#
-#  Also note the use of the TEMPLATEWB_VERSION constant.  This provides
-#  a quick, easy way to version your workbench and makes it easy for
-#  a user to know which version they're running.
-#
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 import os
 import FreeCADGui as Gui
 import FreeCAD as App
-from freecad.casat import ICONPATH
+from freecad.casat import *
 from freecad.casat.version import __version__
 
 
@@ -64,31 +43,25 @@ class casat_workbench(Gui.Workbench):
     CONTEXT = 4
 
     #Workbench GUI-specific attributes
-    MenuText = "casat " + str(__version__)
+    MenuText = "Casat" # + str(__version__)
     ToolTip = "Curve And Surface Additional Tools, a Freecad workbench"
-    Icon = os.path.join(ICONPATH, "template_resource.svg")
+    Icon = os.path.join(ICONPATH, "casat_wb.svg")
     toolbox = []
 
     def __init__(self):
-        """
-        Constructor
-        """
-
+        """Workbench Constructor"""
         self.command_ui = {
-
-            'MenuText': {
+            'Casat': {
                 'gui': self.MENU,
-                'cmd': ['casat_FaceIsocurves', 'MyCommand1', 'MyCommand2', 'MyCommand3']
+                'cmd': ['casat_isocurves', 'to_console']
             },
-
             'Files': {
                 'gui': self.TOOLBAR,
-                'cmd': ['casat_FaceIsocurves', 'MyCommand2']
+                'cmd': [] #'casat_isocurves', 'to_console', 'bspline_to_console']
             },
-
             'Geometry': {
                 'gui': self.TOOLBAR + self.CONTEXT,
-                'cmd': ['casat_FaceIsocurves', 'MyCommand1', 'MyCommand3']
+                'cmd': ['casat_isocurves', 'to_console', 'bspline_to_console']
             },
         }
 
@@ -104,6 +77,7 @@ class casat_workbench(Gui.Workbench):
         #import commands here to be added to the user interface
         from .gui.commands import my_command_1, my_command_2, my_command_3
         from .gui.commands import face_isocurves
+        from .gui.commands import dev_tools
 
         #iterate the command toolboxes defined in __init__() and add
         #them to the UI according to the assigned location flags
@@ -118,8 +92,18 @@ class casat_workbench(Gui.Workbench):
         self.appendToolbar("Tools", self.toolbox)
         self.appendMenu("Tools", self.toolbox)
 
+    def ContextMenu(self, recipient):
+        """This is executed whenever the user right-clicks on screen.
+        recipient" will be either 'view' or 'tree'"""
+        if recipient == "View":
+            contextlist = ["adjacent_faces","bspline_to_console"] # list of commands
+            self.appendContextMenu("Curves",contextlist)
+        elif recipient == "Tree":
+            contextlist = [] # list of commands
+            self.appendContextMenu("Curves",contextlist)
+
         #Add diagnostic code or other start-up related activities here
-        App.Console.PrintMessage("\n\tSwitching to casat workbench ({0})".format(str(__version__)))
+        #App.Console.PrintMessage("\n\tSwitching to casat workbench ({0})".format(str(__version__)))
 
     def Activated(self):
         """

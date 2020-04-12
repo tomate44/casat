@@ -7,13 +7,14 @@ __doc__ = """Various utilities working on curves"""
 
 import FreeCAD as App
 import FreeCADGui as Gui
+from freecad.casat import *
 import Part
 from . import nurbs_tools
 from .nurbs_tools import parameterization
 import numpy as np
 vec2 = App.Base.Vector2d
 
-print("curve python module")
+debug("curve python module")
 
 class Curve:
     "Curve class"

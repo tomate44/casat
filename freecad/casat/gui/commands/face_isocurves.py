@@ -29,41 +29,26 @@ import FreeCAD as App
 import FreeCADGui as Gui
 import Part
 
-from freecad.casat import ICONPATH
+from freecad.casat import *
 from .. import _utils
 from ...app import face
 
 TOOL_ICON = os.path.join(ICONPATH, "face_isocurves.svg")
 
 class FaceIsocurves():
-    """
-    Face isocurves Command
-    """
-
-    #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    # Resource definition allows customization of the command icon,
-    # hotkey, text, tooltip and whether or not the command is active
-    # when a task panel is open
-    #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     resources = {
         'Pixmap'  : TOOL_ICON,
         'Accel'   : "Shift+1",
-        'MenuText': "FaceIsocurves",
+        'MenuText': "Isocurves",
         'ToolTip' : "Creates isocurves on a face",
         'CmdType' : "ForEdit"
     }
 
     def GetResources(self):
-        """
-        Return the command resources dictionary
-        """
         return self.resources
 
     def Activated(self):
-        """
-        Activation callback
-        """
-        print('\n\tRunning FaceIsocurves Command ...')
+        debug('Running FaceIsocurves Command ...')
 
         sel = Gui.Selection.getSelectionEx()
         faces = []
@@ -86,9 +71,6 @@ class FaceIsocurves():
         Gui.SendMsgToActiveView('ViewFit')
 
     def IsActive(self):
-        """
-        Returns always active
-        """
         if (App.ActiveDocument is not None) and (len(Gui.Selection.getSelection()) > 0):
             return True
         else:
@@ -113,19 +95,44 @@ class IsoCurve:
         selfobj.setEditorMode("NumberV", 0)
         selfobj.Proxy = self
 
-    def split(self, e, t0, t1):
-        p0,p1 = e.ParameterRange
-        if (t0 > p0) & (t1 < p1):
-            w = e.split([t0,t1])
-            return w.Edges[1]
-        elif (t0 > p0):
-            w = e.split(t0)
-            return w.Edges[1]
-        elif (t1 < p1):
-            w = e.split(t1)
-            return w.Edges[0]
-        else:
-            return e
+    #def split(self, e, t0, t1):
+        #p0,p1 = e.ParameterRange
+        #if (t0 > p0) & (t1 < p1):
+            #w = e.split([t0,t1])
+            #return w.Edges[1]
+        #elif (t0 > p0):
+            #w = e.split(t0)
+            #return w.Edges[1]
+        #elif (t1 < p1):
+            #w = e.split(t1)
+            #return w.Edges[0]
+        #else:
+            #return e
+
+    #def tangentAt(self, selfobj, p):
+        #if selfobj.Orientation == 'U':
+            #if (p >= self.v0) & (p <= self.v1):
+                #return selfobj.Shape.tangentAt(p)
+            #else:
+                #App.Console.PrintError("Parameter out of range (%f, %f)\n"%(self.v0,self.v1))
+        #if selfobj.Orientation == 'V':
+            #if (p >= self.u0) & (p <= self.u1):
+                #return selfobj.Shape.tangentAt(p)
+            #else:
+                #App.Console.PrintError("Parameter out of range (%f, %f)\n"%(self.u0,self.u1))
+
+    #def normalAt(self, selfobj, p):
+        #face = self.getFace(selfobj)
+        #if selfobj.Orientation == 'U':
+            #if (p >= self.v0) & (p <= self.v1):
+                #return face.normalAt(selfobj.Parameter, p)
+            #else:
+                #App.Console.PrintError("Parameter out of range (%f, %f)\n"%(self.v0,self.v1))
+        #if selfobj.Orientation == 'V':
+            #if (p >= self.u0) & (p <= self.u1):
+                #return face.normalAt(p, selfobj.Parameter)
+            #else:
+                #App.Console.PrintError("Parameter out of range (%f, %f)\n"%(self.u0,self.u1))
 
     def getBounds(self, obj):
         face = self.getFace(obj)
@@ -134,49 +141,18 @@ class IsoCurve:
     def getFace(self, obj):
         return _utils.getShape(obj, "Face", "Face")
 
-    def tangentAt(self, selfobj, p):
-        if selfobj.Orientation == 'U':
-            if (p >= self.v0) & (p <= self.v1):
-                return selfobj.Shape.tangentAt(p)
-            else:
-                App.Console.PrintError("Parameter out of range (%f, %f)\n"%(self.v0,self.v1))
-        if selfobj.Orientation == 'V':
-            if (p >= self.u0) & (p <= self.u1):
-                return selfobj.Shape.tangentAt(p)
-            else:
-                App.Console.PrintError("Parameter out of range (%f, %f)\n"%(self.u0,self.u1))
-
-    def normalAt(self, selfobj, p):
-        face = self.getFace(selfobj)
-        if selfobj.Orientation == 'U':
-            if (p >= self.v0) & (p <= self.v1):
-                return face.normalAt(selfobj.Parameter, p)
-            else:
-                App.Console.PrintError("Parameter out of range (%f, %f)\n"%(self.v0,self.v1))
-        if selfobj.Orientation == 'V':
-            if (p >= self.u0) & (p <= self.u1):
-                return face.normalAt(p, selfobj.Parameter)
-            else:
-                App.Console.PrintError("Parameter out of range (%f, %f)\n"%(self.u0,self.u1))
-
-
     def execute(self,selfobj):
-
         my_face = self.getFace(selfobj)
-        #try:
-            #trim = self.trim_modes.index(selfobj.TrimMode)
-        #except:
-            #trim = 0
         trim = self.trim_modes.index(selfobj.TrimMode)
         #print("trim : {}".format(trim))
         if my_face:
             if selfobj.Mode == 'Multi':
-                w = face.face_isocurves(my_face, selfobj.NumberU, selfobj.NumberV, trim)
+                w = face.isocurves(my_face, selfobj.NumberU, selfobj.NumberV, trim)
             else:
                 if selfobj.Orientation == "V":
-                    w = face.face_isocurves(my_face, [], [selfobj.Parameter], trim)
+                    w = face.isocurves(my_face, [], [selfobj.Parameter], trim)
                 else:
-                    w = face.face_isocurves(my_face, [selfobj.Parameter], [], trim)
+                    w = face.isocurves(my_face, [selfobj.Parameter], [], trim)
             selfobj.Shape = w
             #selfobj.Placement = my_face.Placement
         else:
@@ -243,8 +219,4 @@ class IsoCurveVP:
     def getIcon(self):
         return TOOL_ICON
 
-    #def attach(self, vobj):
-        #self.ViewObject = vobj
-        #self.Object = vobj.Object
-
-Gui.addCommand('casat_FaceIsocurves', FaceIsocurves())
+Gui.addCommand('casat_isocurves', FaceIsocurves())

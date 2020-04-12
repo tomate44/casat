@@ -7,7 +7,7 @@ __doc__ = "Collection of tools for Nurbs."
 
 import FreeCAD
 import Part
-
+from freecad.casat import *
 #import _utils
 #debug = _utils.debug
 #debug = _utils.doNothing
