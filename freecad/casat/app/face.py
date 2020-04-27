@@ -131,3 +131,104 @@ def isocurves(face, nbU=8, nbV=8, mode=0):
             eV.extend(isocurve(trim_face, v, "v"))
     return Part.Compound([Part.Compound(eU),Part.Compound(eV)])
 
+def flat_cone_surface(face):
+    """
+    Creates a flat nurbs surface from input conical face
+    """
+    u0,u1,v0,v1 = face.ParameterRange
+    angle = 90
+    seam = face.Surface.uIso(0)
+    p1 = seam.value(v0)
+    p2 = seam.value(v1)
+    radius1 = face.Surface.Apex.distanceToPoint(p1)
+    radius2 = face.Surface.Apex.distanceToPoint(p2)
+    t = seam.tangent(v0)[0]
+    normal = t.cross(face.Surface.Axis.cross(t))
+    c1 = Part.Circle(face.Surface.Apex, normal, radius1)
+    c2 = Part.Circle(face.Surface.Apex, normal, radius2)
+    ci1 = face.Surface.vIso(v0)
+    ci2 = face.Surface.vIso(v1)
+    fp1 = c1.parameter(p1)
+    fp2 = c2.parameter(p2)
+    lp1 = c1.parameterAtDistance(ci1.length(), fp1)
+    lp2 = c2.parameterAtDistance(ci2.length(), fp2)
+    ce1 = c1.toShape(fp1,lp1)
+    ce2 = c2.toShape(fp2,lp2)
+    rs = Part.makeRuledSurface(ce1,ce2)
+    bs = rs.Surface
+    bs.setUKnots([0, 2*pi])
+    bs.setVKnots([v0, v1])
+    return bs
+
+def flat_cylinder_surface(face):
+    """
+    Creates a flat nurbs surface from input cylindrical face
+    """
+    l1 = face.Surface.uIso(0)
+    e1 = l1.toShape(*face.ParameterRange[2:])
+    c1 = face.Surface.vIso(face.ParameterRange[2])
+    t1 = c1.tangent(c1.FirstParameter)[0]
+    l = c1.length()
+    e2 = e1.copy()
+    e2.translate(t1*l)
+    rs = Part.makeRuledSurface(e1,e2)
+    bs = rs.Surface
+    bs.exchangeUV()
+    bs.setUKnots([0, 2*pi])
+    return bs
+
+def flatten(face):
+    """
+    Flattens a face.
+    Currently, this works only on conical and cylindrical faces.
+    Returns the flat face, or a compound of wires, if face creation fails.
+    """
+    tol = 1e-7
+    if isinstance(face.Surface, Part.Cylinder):
+        flat_face = flat_cylinder_surface(face)
+    elif isinstance(face.Surface, Part.Cone):
+        flat_face = flat_cone_surface(face)
+    else:
+        return None
+    u0,u1,v0,v1 = face.Surface.bounds()
+    seam = face.Surface.uIso(0)
+    wires = []
+    for w in face.Wires:
+        edges = []
+        additional_edges = []
+        for e in w.Edges:
+            c, fp, lp = face.curveOnSurface(e)
+            if isinstance(c, Part.Geom2d.Line2d):
+                p1 = c.value(fp)
+                p2 = c.value(lp)
+                if abs(p1.x-u0)+abs(p2.x-u0) < tol:
+                    print("seam edge detected at u0")
+                    p1.x = u1
+                    p2.x = u1
+                    nl = Part.Geom2d.Line2dSegment(p1,p2)
+                    additional_edges.append(nl.toShape(flat_face))
+                elif abs(p1.x-u1)+abs(p2.x-u1) < tol:
+                    print("seam edge detected at u1")
+                    p1.x = u0
+                    p2.x = u0
+                    nl = Part.Geom2d.Line2dSegment(p1,p2)
+                    additional_edges.append(nl.toShape(flat_face))
+            edges.append(c.toShape(flat_face, fp, lp))
+        se = Part.sortEdges(edges)
+        if len(se) > 1:
+            print("multiple wires : trying to join them")
+            se = Part.sortEdges(edges+additional_edges)
+        if len(se) > 1:
+            print("Failed to join wires ???")
+        w = Part.Wire(se[0])
+        if not w.isClosed():
+            print("Closing open wire")
+            w = close_wire(w)
+        wires.append(w)
+    f = Part.Face(wires)
+    f.validate()
+    if f.isValid():
+        return f
+    else:
+        return Part.Compound(wires)
+
