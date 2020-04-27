@@ -9,6 +9,8 @@ import FreeCAD as App
 import FreeCADGui as Gui
 from freecad.casat import *
 import Part
+from . import wire as wt
+vec3 = App.Vector
 vec2 = App.Base.Vector2d
 
 debug("face python module")
@@ -131,12 +133,12 @@ def isocurves(face, nbU=8, nbV=8, mode=0):
             eV.extend(isocurve(trim_face, v, "v"))
     return Part.Compound([Part.Compound(eU),Part.Compound(eV)])
 
-def flat_cone_surface(face):
+def flat_cone_surface(face, in_place=False):
     """
     Creates a flat nurbs surface from input conical face
+    if in_place is True, the surface is located at the seam edge of the face.
     """
     u0,u1,v0,v1 = face.ParameterRange
-    angle = 90
     seam = face.Surface.uIso(0)
     p1 = seam.value(v0)
     p2 = seam.value(v1)
@@ -152,6 +154,9 @@ def flat_cone_surface(face):
     fp2 = c2.parameter(p2)
     lp1 = c1.parameterAtDistance(ci1.length(), fp1)
     lp2 = c2.parameterAtDistance(ci2.length(), fp2)
+    if not in_place:
+        c1 = Part.Circle(vec3(), vec3(0,0,1), radius1)
+        c2 = Part.Circle(vec3(), vec3(0,0,1), radius2)
     ce1 = c1.toShape(fp1,lp1)
     ce2 = c2.toShape(fp2,lp2)
     rs = Part.makeRuledSurface(ce1,ce2)
@@ -223,7 +228,7 @@ def flatten(face):
         w = Part.Wire(se[0])
         if not w.isClosed():
             print("Closing open wire")
-            w = close_wire(w)
+            w = wt.close(w)
         wires.append(w)
     f = Part.Face(wires)
     f.validate()
