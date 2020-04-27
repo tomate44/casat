@@ -12,6 +12,13 @@ vec2 = App.Base.Vector2d
 
 debug("wire python module")
 
+def close(w):
+    "Close an open wire with a straight edge"
+    e = Part.makeLine(w.OrderedVertexes[-1].Point, w.OrderedVertexes[0].Point)
+    edges = w.Edges
+    edges.append(e)
+    return Part.Wire(Part.sortEdges(edges)[0])
+
 class BoundarySorter:
     """Sort nested wires in order to build faces"""
     def __init__(self, wires):
