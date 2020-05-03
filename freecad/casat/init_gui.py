@@ -46,22 +46,26 @@ class casat_workbench(Gui.Workbench):
     MenuText = "Casat" # + str(__version__)
     ToolTip = "Curve And Surface Additional Tools, a Freecad workbench"
     Icon = os.path.join(ICONPATH, "casat_wb.svg")
-    toolbox = []
 
     def __init__(self):
         """Workbench Constructor"""
+        self.toolbox = ['bspline_to_console']
         self.command_ui = {
             'Casat': {
-                'gui': self.MENU,
-                'cmd': ['casat_isocurves', 'to_console']
+                'gui': self.MENU + self.TOOLBAR + self.CONTEXT,
+                'cmd': ['casat_flatten_face', 'casat_isocurves', 'to_console']
             },
-            'Files': {
+            #'Casat': {
+                #'gui': self.TOOLBAR,
+                #'cmd': ['casat_flatten_face', 'casat_isocurves', 'to_console']
+            #},
+            #'Casat': {
+                #'gui': self.CONTEXT,
+                #'cmd': ['casat_flatten_face', 'casat_isocurves', 'to_console', ]
+            #},
+            'Devel': {
                 'gui': self.TOOLBAR,
-                'cmd': [] #'casat_isocurves', 'to_console', 'bspline_to_console']
-            },
-            'Geometry': {
-                'gui': self.TOOLBAR + self.CONTEXT,
-                'cmd': ['casat_isocurves', 'to_console', 'bspline_to_console']
+                'cmd': ['to_console', 'bspline_to_console']
             },
         }
 
@@ -73,10 +77,11 @@ class casat_workbench(Gui.Workbench):
         This function is called at the first activation of the workbench.
         Import commands here
         """
-
+        message("Activation\n\n   ***   Welcome to CASAT workbench.   ***\nC.A.S.A.T -> Curve And Surface Additional Tools\n")
         #import commands here to be added to the user interface
         from .gui.commands import my_command_1, my_command_2, my_command_3
         from .gui.commands import face_isocurves
+        from .gui.commands import face_flattening
         from .gui.commands import dev_tools
 
         #iterate the command toolboxes defined in __init__() and add
@@ -89,21 +94,8 @@ class casat_workbench(Gui.Workbench):
             if _v['gui'] & self.MENU:
                 self.appendMenu(_k, _v['cmd'])
 
-        self.appendToolbar("Tools", self.toolbox)
-        self.appendMenu("Tools", self.toolbox)
-
-    def ContextMenu(self, recipient):
-        """This is executed whenever the user right-clicks on screen.
-        recipient" will be either 'view' or 'tree'"""
-        if recipient == "View":
-            contextlist = ["adjacent_faces","bspline_to_console"] # list of commands
-            self.appendContextMenu("Curves",contextlist)
-        elif recipient == "Tree":
-            contextlist = [] # list of commands
-            self.appendContextMenu("Curves",contextlist)
-
-        #Add diagnostic code or other start-up related activities here
-        #App.Console.PrintMessage("\n\tSwitching to casat workbench ({0})".format(str(__version__)))
+            if (_k == 'Devel') and FreeCAD.ParamGet("User parameter:BaseApp/Preferences/Mod/Casat").GetBool('Devel', False):
+                self.appendToolbar(_k, _v['cmd'])
 
     def Activated(self):
         """
@@ -121,7 +113,12 @@ class casat_workbench(Gui.Workbench):
         """
         Right-click menu options
         """
-
+        #if recipient == "View":
+            #contextlist = ["adjacent_faces","bspline_to_console"] # list of commands
+            #self.appendContextMenu("Curves",contextlist)
+        #elif recipient == "Tree":
+            #contextlist = [] # list of commands
+            #self.appendContextMenu("Curves",contextlist)
         #Populate the context menu when it's called
         for _k, _v in self.command_ui.items():
             if _v['gui'] & self.CONTEXT:

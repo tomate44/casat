@@ -8,6 +8,7 @@ __doc__ = """Various utilities working on wires"""
 import FreeCAD as App
 import FreeCADGui as Gui
 import Part
+from freecad.casat import *
 vec2 = App.Base.Vector2d
 
 debug("wire python module")

@@ -5,10 +5,11 @@ __author__ = "Christophe Grellier (Chris_G)"
 __license__ = "LGPL 2.1"
 __doc__ = """Various utilities working on topo faces"""
 
+from math import pi
 import FreeCAD as App
 import FreeCADGui as Gui
-from freecad.casat import *
 import Part
+from freecad.casat import *
 from . import wire as wt
 vec3 = App.Vector
 vec2 = App.Base.Vector2d
@@ -135,17 +136,18 @@ def isocurves(face, nbU=8, nbV=8, mode=0):
 
 def flat_cone_surface(face, in_place=False):
     """
-    Creates a flat nurbs surface from input conical face
-    if in_place is True, the surface is located at the seam edge of the face.
+    flat_face = flat_cone_surface(face, in_place=False)
+    Creates a flat nurbs surface from input conical face, with same parametrization.
+    If in_place is True, the surface is located at the seam edge of the face.
     """
-    u0,u1,v0,v1 = face.ParameterRange
-    seam = face.Surface.uIso(0)
+    u0,u1,v0,v1 = get_finite_surface_bounds(face)
+    seam = face.Surface.uIso(u0)
     p1 = seam.value(v0)
     p2 = seam.value(v1)
     radius1 = face.Surface.Apex.distanceToPoint(p1)
     radius2 = face.Surface.Apex.distanceToPoint(p2)
     t = seam.tangent(v0)[0]
-    normal = t.cross(face.Surface.Axis.cross(t))
+    normal = -t.cross(face.Surface.Axis.cross(t))
     c1 = Part.Circle(face.Surface.Apex, normal, radius1)
     c2 = Part.Circle(face.Surface.Apex, normal, radius2)
     ci1 = face.Surface.vIso(v0)
@@ -157,6 +159,9 @@ def flat_cone_surface(face, in_place=False):
     if not in_place:
         c1 = Part.Circle(vec3(), vec3(0,0,1), radius1)
         c2 = Part.Circle(vec3(), vec3(0,0,1), radius2)
+    else:
+        c1.Axis = -c1.Axis
+        c2.Axis = -c2.Axis
     ce1 = c1.toShape(fp1,lp1)
     ce2 = c2.toShape(fp2,lp2)
     rs = Part.makeRuledSurface(ce1,ce2)
@@ -165,24 +170,37 @@ def flat_cone_surface(face, in_place=False):
     bs.setVKnots([v0, v1])
     return bs
 
-def flat_cylinder_surface(face):
+def flat_cylinder_surface(face, in_place=False):
     """
-    Creates a flat nurbs surface from input cylindrical face
+    flat_face = flat_cylinder_surface(face, in_place=False)
+    Creates a flat nurbs surface from input cylindrical face, with same parametrization.
+    If in_place is True, the surface is located at the seam edge of the face.
     """
-    l1 = face.Surface.uIso(0)
-    e1 = l1.toShape(*face.ParameterRange[2:])
-    c1 = face.Surface.vIso(face.ParameterRange[2])
-    t1 = c1.tangent(c1.FirstParameter)[0]
-    l = c1.length()
-    e2 = e1.copy()
-    e2.translate(t1*l)
-    rs = Part.makeRuledSurface(e1,e2)
-    bs = rs.Surface
-    bs.exchangeUV()
+    u0,u1,v0,v1 = get_finite_surface_bounds(face)
+    c1 = face.Surface.uIso(u0)
+    e1 = c1.toShape(v0,v1)
+    l1 = e1.Length
+    c2 = face.Surface.vIso(v0)
+    e2 = c2.toShape(u0,u1)
+    l2 = e2.Length
+    if in_place:
+        t1 = c2.tangent(c2.FirstParameter)[0]
+        e3 = e1.copy()
+        e3.translate(t1*l2)
+        rs = Part.makeRuledSurface(e1,e3)
+        bs = rs.Surface
+        bs.exchangeUV()
+    else:
+        bs = Part.BSplineSurface()
+        bs.setPole(1, 1, vec3(0, 0, 0))
+        bs.setPole(1, 2, vec3(l1,0, 0))
+        bs.setPole(2, 1, vec3(0, l2,0))
+        bs.setPole(2, 2, vec3(l1,l2,0))
     bs.setUKnots([0, 2*pi])
+    bs.setVKnots(face.ParameterRange[2:])
     return bs
 
-def flatten(face):
+def flatten(face, in_place=False):
     """
     Flattens a face.
     Currently, this works only on conical and cylindrical faces.
@@ -190,9 +208,9 @@ def flatten(face):
     """
     tol = 1e-7
     if isinstance(face.Surface, Part.Cylinder):
-        flat_face = flat_cylinder_surface(face)
+        flat_face = flat_cylinder_surface(face, in_place)
     elif isinstance(face.Surface, Part.Cone):
-        flat_face = flat_cone_surface(face)
+        flat_face = flat_cone_surface(face, in_place)
     else:
         return None
     u0,u1,v0,v1 = face.Surface.bounds()
@@ -207,13 +225,13 @@ def flatten(face):
                 p1 = c.value(fp)
                 p2 = c.value(lp)
                 if abs(p1.x-u0)+abs(p2.x-u0) < tol:
-                    print("seam edge detected at u0")
+                    debug("seam edge detected at u0")
                     p1.x = u1
                     p2.x = u1
                     nl = Part.Geom2d.Line2dSegment(p1,p2)
                     additional_edges.append(nl.toShape(flat_face))
                 elif abs(p1.x-u1)+abs(p2.x-u1) < tol:
-                    print("seam edge detected at u1")
+                    debug("seam edge detected at u1")
                     p1.x = u0
                     p2.x = u0
                     nl = Part.Geom2d.Line2dSegment(p1,p2)
@@ -221,19 +239,108 @@ def flatten(face):
             edges.append(c.toShape(flat_face, fp, lp))
         se = Part.sortEdges(edges)
         if len(se) > 1:
-            print("multiple wires : trying to join them")
+            debug("multiple wires : trying to join them")
             se = Part.sortEdges(edges+additional_edges)
         if len(se) > 1:
-            print("Failed to join wires ???")
+            debug("Failed to join wires ???")
         w = Part.Wire(se[0])
         if not w.isClosed():
-            print("Closing open wire")
+            debug("Closing open wire")
             w = wt.close(w)
         wires.append(w)
     f = Part.Face(wires)
     f.validate()
     if f.isValid():
+        f.reverse()
         return f
     else:
         return Part.Compound(wires)
 
+def map_shape(face, shape, transfer):
+    """
+    mapped_shape = map_shape(face, shapes, transfer)
+    Maps the shape on the target face
+    transfer is a nurbs rectangle that has the same parameters as the target face.
+    shape is projected onto transfer, to get the 2D geometry.
+    """
+    proj = transfer.project(shape.Edges)
+    new_edges = []
+    for e in proj.Edges:
+        try:
+            c2d, fp, lp = transfer.curveOnSurface(e)
+            ne = c2d.toShape(face.Surface, fp, lp)
+            new_edges.append(ne)
+        except TypeError:
+            debug("Failed to get 2D curve")
+    #sorted_edges = Part.sortEdges(new_edges)
+    #wirelist = [Part.Wire(el) for el in sorted_edges]
+    if len(new_edges) == 0:
+        return []
+    else:
+        nw = Part.Wire(Part.sortEdges(new_edges)[0])
+        return nw
+        #debug("wires has {} edges".format(len(nw.Edges)))
+        #cleaned = nw.removeSplitter()
+        #cleaned.sewShape()
+        #debug("reduced to {} edges".format(len(cleaned.Edges)))
+        #return cleaned
+
+def map_shapes(face, shapes, transfer=None):
+    """
+    mapped_shapes = map_shapes(face, shapes, transfer)
+    Maps the shapes on the target face
+    transfer is a nurbs rectangle that has the same parameters as the target face.
+    shapes are projected onto transfer, to get the 2D geometries.
+    """
+    def get_nurbs_rectangle(shapes):
+        bb = Part.Compound(shapes).BoundBox
+        dims = [bb.XLength, bb.YLength, bb.ZLength]
+        if min(dims) == dims[0]:
+            pts = [vec3(bb.XMin, bb.YMin, bb.ZMin),
+                   vec3(bb.XMin, bb.YMax, bb.ZMin),
+                   vec3(bb.XMin, bb.YMax, bb.ZMax),
+                   vec3(bb.XMin, bb.YMin, bb.ZMax)]
+        elif min(dims) == dims[1]:
+            pts = [vec3(bb.XMin, bb.YMin, bb.ZMin),
+                   vec3(bb.XMax, bb.YMin, bb.ZMin),
+                   vec3(bb.XMax, bb.YMin, bb.ZMax),
+                   vec3(bb.XMin, bb.YMin, bb.ZMax)]
+        else:
+            pts = [vec3(bb.XMin, bb.YMin, bb.ZMin),
+                   vec3(bb.XMax, bb.YMin, bb.ZMin),
+                   vec3(bb.XMax, bb.YMax, bb.ZMin),
+                   vec3(bb.XMin, bb.YMax, bb.ZMin)]
+        bs = Part.BSplineSurface()
+        bs.setPole(1, 1, pts[0])
+        bs.setPole(1, 2, pts[1])
+        bs.setPole(2, 2, pts[2])
+        bs.setPole(2, 1, pts[3])
+        return bs
+
+    u0, u1, v0, v1 = face.ParameterRange
+    if transfer is None:
+        transfer = get_nurbs_rectangle(shapes)
+    transfer.setUKnots([u0, u1])
+    transfer.setVKnots([v0, v1])
+    transfer = transfer.toShape()
+    
+    mapped = []
+    for sh in shapes:
+        if isinstance(sh, Part.Face):
+            ow = sh.OuterWire
+            holes = []
+            for w in sh.Wires:
+                if not w.isSame(ow):
+                    holes.append(w)
+            mapped_ow = map_shape(face, ow, transfer)
+            nf = Part.Face(face.Surface, mapped_ow)
+            if not nf.isValid():
+                nf.validate()
+            if holes:
+                mapped_holes = [map_shape(face, w, transfer) for w in holes]
+                nf.cutHoles(mapped_holes)
+                nf.validate()
+            mapped.append(nf)
+        else:
+            mapped.append(map_shape(face, sh, transfer))
+    return mapped
