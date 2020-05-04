@@ -48,15 +48,11 @@ class FlattenFace():
         return self.resources
 
     def createFP(self, obj, sub):
-        if "Face" in sub:
-            n = eval(sub.lstrip("Face"))
-            f = obj.Shape.Faces[n-1]
-            if isinstance(f.Surface, (Part.Cylinder, Part.Cone)):
-                o = App.ActiveDocument.addObject('Part::FeaturePython', 'FlattenFace')
-                o.Label = 'Flat Face'
-                Flatten(o)
-                FlattenVP(o.ViewObject)
-                o.Face = [obj, sub]
+        o = App.ActiveDocument.addObject('Part::FeaturePython', 'FlattenFace')
+        o.Label = 'Flat Face'
+        Flatten(o)
+        FlattenVP(o.ViewObject)
+        o.Face = [obj, sub]
 
     def Activated(self):
         debug('Running FlattenFace Command ...')
@@ -66,10 +62,10 @@ class FlattenFace():
         for so in sel:
             if so.HasSubObjects:
                 for name in so.SubElementNames:
-                    self.createFP(so.Object, name)
+                    if "Face" in name: 
+                        self.createFP(so.Object, name)
             else:
-                for i in range(len(so.Shape.Faces)):
-                    self.createFP(so, "Face{}".format(i))
+                self.createFP(so.Object, [])
         App.ActiveDocument.recompute()
         Gui.SendMsgToActiveView('ViewFit')
 
@@ -88,11 +84,21 @@ class Flatten:
         fp.Proxy = self
 
     def execute(self, fp):
-        my_face = _utils.getShape(fp, "Face", "Face")
-        f = face.flatten(my_face, fp.InPlace)
-        if fp.Reverse:
-            f.reverse()
-        fp.Shape = f
+        if fp.Face[1] == []:
+            faces = []
+            for f in fp.Face[0].Shape.Faces:
+                nf = face.flatten(f, fp.InPlace)
+                if nf is not None:
+                    faces.append(nf)
+            if faces:
+                fp.Shape = Part.Compound(faces)
+        else:
+            my_face = _utils.getShape(fp, "Face", "Face")
+            f = face.flatten(my_face, fp.InPlace)
+            if f is not None:
+                if fp.Reverse:
+                    f.reverse()
+                fp.Shape = f
 
 class FlattenVP:
     def __init__(self,vobj):

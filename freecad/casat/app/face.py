@@ -157,8 +157,8 @@ def flat_cone_surface(face, in_place=False):
     lp1 = c1.parameterAtDistance(ci1.length(), fp1)
     lp2 = c2.parameterAtDistance(ci2.length(), fp2)
     if not in_place:
-        c1 = Part.Circle(vec3(), vec3(0,0,1), radius1)
-        c2 = Part.Circle(vec3(), vec3(0,0,1), radius2)
+        c1 = Part.Circle(vec3(0,0,0), vec3(0,0,1), radius1)
+        c2 = Part.Circle(vec3(0,0,0), vec3(0,0,1), radius2)
     else:
         c1.Axis = -c1.Axis
         c2.Axis = -c2.Axis
@@ -177,10 +177,10 @@ def flat_cylinder_surface(face, in_place=False):
     If in_place is True, the surface is located at the seam edge of the face.
     """
     u0,u1,v0,v1 = get_finite_surface_bounds(face)
-    c1 = face.Surface.uIso(u0)
+    c1 = face.Surface.uIso(u0) # seam line
     e1 = c1.toShape(v0,v1)
     l1 = e1.Length
-    c2 = face.Surface.vIso(v0)
+    c2 = face.Surface.vIso(v0) # circle
     e2 = c2.toShape(u0,u1)
     l2 = e2.Length
     if in_place:
@@ -192,12 +192,12 @@ def flat_cylinder_surface(face, in_place=False):
         bs.exchangeUV()
     else:
         bs = Part.BSplineSurface()
-        bs.setPole(1, 1, vec3(0, 0, 0))
-        bs.setPole(1, 2, vec3(l1,0, 0))
-        bs.setPole(2, 1, vec3(0, l2,0))
-        bs.setPole(2, 2, vec3(l1,l2,0))
+        bs.setPole(1, 1, vec3(v0, 0, 0))
+        bs.setPole(1, 2, vec3(v1,0, 0))
+        bs.setPole(2, 1, vec3(v0, l2,0))
+        bs.setPole(2, 2, vec3(v1,l2,0))
     bs.setUKnots([0, 2*pi])
-    bs.setVKnots(face.ParameterRange[2:])
+    bs.setVKnots([v0, v1])
     return bs
 
 def flatten(face, in_place=False):
@@ -242,7 +242,12 @@ def flatten(face, in_place=False):
             debug("multiple wires : trying to join them")
             se = Part.sortEdges(edges+additional_edges)
         if len(se) > 1:
-            debug("Failed to join wires ???")
+            error("Failed to join wires ???")
+            for el in se:
+                w = Part.Wire(el)
+                wires.append(w)
+            return Part.Compound(wires)
+        
         w = Part.Wire(se[0])
         if not w.isClosed():
             debug("Closing open wire")
