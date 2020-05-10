@@ -457,8 +457,7 @@ def insert_knots(bs, idx1, idx2, num):
 
 def bspline_copy(bs, reverse = False, scale = 1.0):
     """Copy a BSplineCurve, with knotvector optionally reversed and scaled
-    newbspline = bspline_copy(bspline, reverse = False, scale = 1.0)
-    Part.BSplineCurve.buildFromPolesMultsKnots( poles, mults , knots, periodic, degree, weights, CheckRational )"""
+    newbspline = bspline_copy(bspline, reverse = False, scale = 1.0)"""
     mults = bs.getMultiplicities()
     weights = bs.getWeights()
     poles = bs.getPoles()
@@ -878,7 +877,21 @@ class EdgeInterpolator(object):
         else:
             return self.data[0][1]
 
-
+def projection_quad(pts, param_range=[0,1,0,1]):
+    """
+    quad = projection_quad(pts, param_range=[0,1,0,1])
+    Create a quad bspline surface between points pts (SW, NW, SE, NE).
+    param_range is the parametric range of the surface (u0,u1,v0,v1)
+    """
+    s0, s1, t0, t1 = param_range
+    bs = Part.BSplineSurface()
+    poles = [pts[:2], pts[2:]]
+    umults = [2, 2]
+    vmults = [2, 2]
+    uknots = [s0, s1]
+    vknots = [t0, t1]
+    bs.buildFromPolesMultsKnots(poles, umults, vmults, uknots, vknots, False, False, 1, 1)
+    return bs
         
 
 

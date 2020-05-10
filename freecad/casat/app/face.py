@@ -282,19 +282,26 @@ def map_shape(face, shape, transfer):
     if len(new_edges) == 0:
         return []
     else:
-        nw = Part.Wire(Part.sortEdges(new_edges)[0])
-        return nw
+        se = Part.sortEdges(new_edges)
+        if len(se) > 1:
+            wires = []
+            for el in se:
+                wires.append(Part.Wire(el))
+            return Part.Compound(wires)
+        else:
+            return Part.Wire(se[0])
         #debug("wires has {} edges".format(len(nw.Edges)))
         #cleaned = nw.removeSplitter()
         #cleaned.sewShape()
         #debug("reduced to {} edges".format(len(cleaned.Edges)))
         #return cleaned
 
-def map_shapes(face, shapes, transfer=None):
+def map_shapes(shapes, face, transfer=None):
     """
-    mapped_shapes = map_shapes(face, shapes, transfer)
+    mapped_shapes = map_shapes(shapes, face, transfer)
     Maps the shapes on the target face
-    transfer is a nurbs rectangle that has the same parameters as the target face.
+    transfer is a nurbs quad surface that has the same parameters as the target face.
+    (see nurbs_tools.projection_quad)
     shapes are projected onto transfer, to get the 2D geometries.
     """
     def get_nurbs_rectangle(shapes):

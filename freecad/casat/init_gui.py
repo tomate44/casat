@@ -53,7 +53,7 @@ class casat_workbench(Gui.Workbench):
         self.command_ui = {
             'Casat': {
                 'gui': self.MENU + self.TOOLBAR + self.CONTEXT,
-                'cmd': ['casat_flatten_face', 'casat_isocurves', 'to_console']
+                'cmd': ['casat_face_mapping', 'casat_flatten_face', 'casat_isocurves', 'to_console']
             },
             #'Casat': {
                 #'gui': self.TOOLBAR,
@@ -79,10 +79,11 @@ class casat_workbench(Gui.Workbench):
         """
         message("Activation\n\n   ***   Welcome to CASAT workbench.   ***\nC.A.S.A.T -> Curve And Surface Additional Tools\n")
         #import commands here to be added to the user interface
-        from .gui.commands import my_command_1, my_command_2, my_command_3
+        #from .gui.commands import my_command_1, my_command_2, my_command_3
+        from .gui.commands import dev_tools
         from .gui.commands import face_isocurves
         from .gui.commands import face_flattening
-        from .gui.commands import dev_tools
+        from .gui.commands import face_mapping
 
         #iterate the command toolboxes defined in __init__() and add
         #them to the UI according to the assigned location flags
