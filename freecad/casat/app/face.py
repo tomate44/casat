@@ -221,22 +221,27 @@ def flatten(face, in_place=False):
         additional_edges = []
         for e in w.Edges:
             c, fp, lp = face.curveOnSurface(e)
-            if isinstance(c, Part.Geom2d.Line2d):
+            edges.append(c.toShape(flat_face, fp, lp))
+            if e.isSeam(face):
                 p1 = c.value(fp)
                 p2 = c.value(lp)
+                tr_vec = vec2(0, 0)
                 if abs(p1.x-u0)+abs(p2.x-u0) < tol:
                     debug("seam edge detected at u0")
-                    p1.x = u1
-                    p2.x = u1
-                    nl = Part.Geom2d.Line2dSegment(p1,p2)
-                    additional_edges.append(nl.toShape(flat_face))
+                    tr_vec = vec2(u1-u0, 0)
                 elif abs(p1.x-u1)+abs(p2.x-u1) < tol:
                     debug("seam edge detected at u1")
-                    p1.x = u0
-                    p2.x = u0
-                    nl = Part.Geom2d.Line2dSegment(p1,p2)
-                    additional_edges.append(nl.toShape(flat_face))
-            edges.append(c.toShape(flat_face, fp, lp))
+                    tr_vec = vec2(u0-u1, 0)
+                elif abs(p1.y-v0)+abs(p2.y-v0) < tol:
+                    debug("seam edge detected at v0")
+                    tr_vec = vec2(0, v1-v0)
+                elif abs(p1.y-v1)+abs(p2.y-v1) < tol:
+                    debug("seam edge detected at v1")
+                    tr_vec = vec2(0, v0-v1)                    
+                c.translate(tr_vec)
+                re = c.toShape(flat_face, fp, lp)
+                re.reverse()
+                edges.append(re)
         se = Part.sortEdges(edges)
         if len(se) > 1:
             debug("multiple wires : trying to join them")
