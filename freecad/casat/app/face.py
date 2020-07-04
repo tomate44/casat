@@ -345,14 +345,19 @@ def map_shapes(shapes, face, transfer=None):
                 if not w.isSame(ow):
                     holes.append(w)
             mapped_ow = map_shape(face, ow, transfer)
-            nf = Part.Face(face.Surface, mapped_ow)
-            if not nf.isValid():
-                nf.validate()
-            if holes:
-                mapped_holes = [map_shape(face, w, transfer) for w in holes]
-                nf.cutHoles(mapped_holes)
-                nf.validate()
-            mapped.append(nf)
+            mapped_holes = [map_shape(face, w, transfer) for w in holes]
+            try:
+                nf = Part.Face(face.Surface, mapped_ow)
+                if not nf.isValid():
+                    nf.validate()
+                if holes:
+                    nf.cutHoles(mapped_holes)
+                    nf.validate()
+                mapped.append(nf)
+            except Part.OCCError:
+                error("map_shapes: Failed to build face")
+                mapped.append(mapped_ow)
+                mapped.extend(mapped_holes)
         else:
             mapped.append(map_shape(face, sh, transfer))
     return mapped

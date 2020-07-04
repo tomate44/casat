@@ -83,9 +83,9 @@ class FaceMapping():
 class Mapping:
     "The FaceMapping Proxy object"
     def __init__(self, fp):
-        fp.addProperty("App::PropertyLinkList", "Source", "Base", "The source objects that will be mapped")
-        fp.addProperty("App::PropertyLinkSub", "Target", "Base", "The target face")
-        fp.addProperty("App::PropertyLink", "Transfer", "Base", "The quad surface used for projection")
+        fp.addProperty("App::PropertyLinkList", "Source", "Input", "The source objects that will be mapped")
+        fp.addProperty("App::PropertyLinkSub", "Target", "Input", "The target face")
+        fp.addProperty("App::PropertyLink", "Transfer", "Input", "The quad surface used for projection")
         #fp.addProperty("App::PropertyFloat", "Offset", "Settings", "Offset distance of mapped sketch").Offset = 0.0
         fp.addProperty("App::PropertyFloatList", "Offset","Settings", "Offset distance of mapped shapes")
         fp.addProperty("App::PropertyBool", "ReverseU", "Settings", "Reverse U direction").ReverseU = False
