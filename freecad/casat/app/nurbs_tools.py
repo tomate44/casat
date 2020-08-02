@@ -877,11 +877,12 @@ class EdgeInterpolator(object):
         else:
             return self.data[0][1]
 
-def projection_quad(pts, param_range=[0,1,0,1]):
+def projection_quad(pts, param_range=[0,1,0,1], extend_factor=1.0):
     """
     quad = projection_quad(pts, param_range=[0,1,0,1])
     Create a quad bspline surface between points pts (SW, NW, SE, NE).
-    param_range is the parametric range of the surface (u0,u1,v0,v1)
+    param_range is the parametric range of the surface (u0,u1,v0,v1).
+    surface is extended outside of the original points, by extend_factor.
     """
     s0, s1, t0, t1 = param_range
     bs = Part.BSplineSurface()
@@ -890,6 +891,18 @@ def projection_quad(pts, param_range=[0,1,0,1]):
     vmults = [2, 2]
     uknots = [s0, s1]
     vknots = [t0, t1]
+    if extend_factor > 1.0:
+        ur = s1 - s0
+        vr = t1 - t0
+        uknots = [s0 - extend_factor * ur, s1 + extend_factor * ur]
+        vknots = [t0 - extend_factor * vr, t1 + extend_factor * vr]
+        diag_1 = poles[1][1] - poles[0][0]
+        diag_2 = poles[1][0] - poles[0][1]
+        np1 = poles[0][0] - extend_factor * diag_1
+        np2 = poles[0][1] - extend_factor * diag_2
+        np3 = poles[1][0] + extend_factor * diag_2
+        np4 = poles[1][1] + extend_factor * diag_1
+        poles = [[np1,np2],[np3,np4]]
     bs.buildFromPolesMultsKnots(poles, umults, vmults, uknots, vknots, False, False, 1, 1)
     return bs
         
